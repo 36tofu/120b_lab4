@@ -12,37 +12,43 @@
 #include "simAVRHeader.h"
 #endif
 
-enum states { start, PB0ON, PB1ONWAIT, PB1ON, PB0ONWAIT } state;
+enum states { start, WAITRISE, INC, DEC, WAITFALL, RESET } state;
+
+unsigned char tmpC = 7;
 
 void tick()
 {
 	switch(state){
 		case start:
-			state = PB0ON;
+			state = WAITRISE;
 			break;
-		case PB0ON:
-			if(PINA & 0X01 == 0)
-				state = PB0ON;
-			else if(PINA & 0x01 == 1)
-				state = PB1ONWAIT;
+		case WAITRISE:
+			if(PINA & 0X03 == 0)
+				state = WAITRISE;
+			else if(PINA & 0x03 == 1)
+				state = INC;
+			else if(PINA & 0x02 == 1)
+				state = DEC;
 			break;
-		case PB1ONWAIT:
-			if(PINA & 0x01 == 1)
-				state = PB1ONWAIT;
-			else if(PINA & 0x01 == 0)
-				state = PB1ON;
+		case INC:
+			state = WAITFALL;
 			break;
-		case PB1ON:
-			if(PINA & 0x01 == 0)
-				state = PB1ON;
-			else if(PINA & 0x01 == 1)
-				state = PB0ONWAIT;
+		case DEC:
+			state = WAITFALL;
 			break;
-		case PB0ONWAIT:
-			if(PINA & 0x01 == 1)
-				state = PB0ONWAIT;
-			else if(PINA & 0x01 == 0)
-				state = PB0ON;
+		case WAITFALL:
+			if((PINA & 0X03 == 1)||(PINA & 0x03 == 2))
+				state = WAITFALL;
+			else if(PINA & 0x03 == 0)
+				state = WAITRISE;
+			else if(PINA & 0x03 == 3)
+				state = RESET;
+			break;
+		case RESET:
+			if(PINA & 0x03 == 0)
+				state = WAITRISE;
+			else
+				state = RESET;
 			break;
 		default:
 			state = start;
@@ -51,17 +57,22 @@ void tick()
 	}
 	//state actions
 	switch(state){
-		case PB0ON:
-			PORTB = 0x01;
+		case start:
+			tmpC = 0x07;
 			break;
-		case PB1ONWAIT:
-			PORTB = 0x02;
+		case WAITRISE:
 			break;
-		case PB1ON:
-			PORTB = 0x02;
+		case WAITFALL:
 			break;
-		case PB0ONWAIT:
-			PORTB = 0x01;
+		case INC:
+			if(tmpC < 0x09) tmpC = tmpC + 1;
+			printf("c = ", tmpC);
+			break;
+		case DEC:
+			if(tmpC > 0x00) tmpC = tmpC - 1;
+			break;
+		case RESET:
+			tmpC = 0x00;
 			break;
 		default:
 			break;
@@ -72,11 +83,12 @@ void tick()
 int main(void) {
     /* Insert DDR and PORT initializations */
 	DDRA = 0x00; PORTA = 0x00; // Configure port A's 8 pins as inputs
-	DDRB = 0xFF; PORTB = 0x00; // Configure port B's 8 pins as inputs
+	DDRC = 0xFF; PORTC = 0x00; // Configure port B's 8 pins as inputs
     /* Insert your solution below */
 	state = start;   
 	while (1) {
 		tick();
+		PORTC = tmpC;
     	}
    	 return 1;
 }
