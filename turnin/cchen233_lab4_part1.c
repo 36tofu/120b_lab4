@@ -72,7 +72,7 @@ void tick()
 int main(void) {
     /* Insert DDR and PORT initializations */
 	DDRA = 0x00; PORTA = 0x00; // Configure port A's 8 pins as inputs
-	DDRB = 0xFF; PORTB = 0x00; // Configure port B's 8 pins as inputs
+	DDRB = 0xFF; PORTB = 0x01; // Configure port B's 8 pins as inputs
     /* Insert your solution below */
 	state = start;   
 	while (1) {
