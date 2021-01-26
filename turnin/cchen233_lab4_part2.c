@@ -12,44 +12,42 @@
 #include "simAVRHeader.h"
 #endif
 
-enum states { start, init, WAITRISE, INC, DEC, WAITFALL, RESET } state;
+enum states { start, WAITRISE, INC, DEC, WAITFALL, RESET } state;
 
-static unsigned char tmpC;
+unsigned char tmpC;
+unsigned char tmpA;
 
 void tick()
 {
+	tmpA = PINA & 0x03;
 	switch(state){
 		case start:
-			state = init;
-			break;
-		case init:
 			state = WAITRISE;
 			break;
 		case WAITRISE:
-			if(PINA & 0X03 == 0)
+			if((PINA & 0X03) == 0)
 				state = WAITRISE;
-			else if(PINA & 0x03 == 1)
+			else if(tmpA == 1)
 				state = INC;
-			else if(PINA & 0x03 == 2)
+			else if(tmpA == 2)
 				state = DEC;
 			break;
 		case INC:
-			//state = WAITFALL;
-			state = INC;
+			state = WAITFALL;
 			break;
 		case DEC:
 			state = WAITFALL;
 			break;
 		case WAITFALL:
-			if((PINA & 0X03 == 1)||(PINA & 0x03 == 2))
+			if((tmpA == 1)||(tmpA == 2))
 				state = WAITFALL;
-			else if(PINA & 0x03 == 0)
+			else if(tmpA == 0)
 				state = WAITRISE;
-			else if(PINA & 0x03 == 3)
+			else if(tmpA == 3)
 				state = RESET;
 			break;
 		case RESET:
-			if(PINA & 0x03 == 0)
+			if(tmpA == 0)
 				state = WAITRISE;
 			else
 				state = RESET;
@@ -62,9 +60,7 @@ void tick()
 	//state actions
 	switch(state){
 		case start:
-			break;
-		case init:
-			tmpC = 0x07;
+			// tmpC = 0x07;
 			break;
 		case WAITRISE:
 			break;
@@ -83,7 +79,7 @@ void tick()
 			break;
 		
 	}
-		PORTC = tmpC;
+	PORTC = tmpC;
 }
 
 int main(void) {
@@ -92,6 +88,7 @@ int main(void) {
 	DDRC = 0xFF; PORTC = 0x00; // Configure port B's 8 pins as inputs
     /* Insert your solution below */
 	state = start;   
+	tmpC = 0x07;
 	while (1) {
 		tick();
     	}
