@@ -12,45 +12,58 @@
 #include "simAVRHeader.h"
 #endif
 
-enum states { start, WAITRISE, INC, DEC, WAITFALL, RESET } state;
+enum states { start, lock, pound, waitY, unlock, lpound, ly } state;
 
-unsigned char tmpC;
 unsigned char tmpA;
 
 void tick()
-{
-	tmpA = PINA & 0x03;
+{	//transitions
+	tmpA = PINA & 0x87;
 	switch(state){
 		case start:
-			state = WAITRISE;
+			state = lock;
 			break;
-		case WAITRISE:
-			if((PINA & 0X03) == 0)
-				state = WAITRISE;
-			else if(tmpA == 1)
-				state = INC;
-			else if(tmpA == 2)
-				state = DEC;
+		case lock:
+			if(tmpA == 4)
+				state = pound;
+			else 
+				state = lock;
 			break;
-		case INC:
-			state = WAITFALL;
-			break;
-		case DEC:
-			state = WAITFALL;
-			break;
-		case WAITFALL:
-			if((tmpA == 1)||(tmpA == 2))
-				state = WAITFALL;
+		case pound:
+			if(tmpA == 4)
+				state = pound;
 			else if(tmpA == 0)
-				state = WAITRISE;
-			else if(tmpA == 3)
-				state = RESET;
+				state = waitY;
 			break;
-		case RESET:
+		case waitY:
 			if(tmpA == 0)
-				state = WAITRISE;
+				state = waitY;
+			else if(tmpA == 2)
+				state = unlock;
 			else
-				state = RESET;
+				state = lock;
+			break;
+		case unlock:
+			if(tmpA == 0x80)
+				state = lock;
+			else if(tmpA == 4)
+				state = lpound;
+			else 
+				state = unlock;
+			break;
+		case lpound:
+			if(tmpA == 4)
+				state = lpound;
+			else if(tmpA == 0)
+				state = ly;
+			break;
+		case ly:
+			if(tmpA == 0)
+				state = ly;
+			else if(tmpA == 2)
+				state = lock;
+			else
+				state = unlock;
 			break;
 		default:
 			state = start;
@@ -60,35 +73,40 @@ void tick()
 	//state actions
 	switch(state){
 		case start:
-			// tmpC = 0x07;
+			PORTB = 0;
 			break;
-		case WAITRISE:
+		case lock:
+			PORTB = 0;
 			break;
-		case WAITFALL:
+		case pound:
+			PORTB = 0;
 			break;
-		case INC:
-			if(tmpC < 0x09) tmpC = tmpC + 1;
+		case waitY:
+			PORTB = 0;
 			break;
-		case DEC:
-			if(tmpC > 0x00) tmpC = tmpC - 1;
+		case unlock:
+			PORTB = 1;
 			break;
-		case RESET:
-			tmpC = 0x00;
+		case lpound:
+			PORTB = 1;
+			break;
+		case ly:
+			PORTB = 1;
 			break;
 		default:
 			break;
 		
 	}
-	PORTC = tmpC;
+	PORTC = state;
 }
 
 int main(void) {
     /* Insert DDR and PORT initializations */
 	DDRA = 0x00; PORTA = 0x00; // Configure port A's 8 pins as inputs
+	DDRB = 0xFF; PORTB = 0x00; // Configure port B's 8 pins as inputs
 	DDRC = 0xFF; PORTC = 0x00; // Configure port B's 8 pins as inputs
     /* Insert your solution below */
 	state = start;   
-	tmpC = 0x07;
 	while (1) {
 		tick();
     	}
